@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Control room – Campus Polls{% endblock %}
+{% block bodyclass %}admin{% endblock %}
+{% block headwrap %}wide{% endblock %}
+{% block footwrap %}wide{% endblock %}
+{% block mainclass %}wide{% endblock %}
+{% block content %}
+<div class="admin-head">
+  <div>
+    <div class="caption" id="caption">Control room</div>
+    <h1 id="question">No poll yet</h1>
+    <div class="stats" id="stats"></div>
+    <div class="toolbar">
+      <div class="toolgroup">
+        <span class="gl">Start a new poll</span>
+        <select id="poll" aria-label="Poll">{% for k, p in polls.items() %}<option value="{{ k }}">{{ p.question }}</option>{% endfor %}</select>
+        <select id="mode" aria-label="Mode"><option value="basic">Basic: no protection</option><option value="protected">Protected: Paillier</option></select>
+        <button class="btn small" id="newPoll">Open poll</button>
+      </div>
+      <div class="toolgroup">
+        <span class="gl">Current poll</span>
+        <input id="simN" type="text" value="10" inputmode="numeric" aria-label="Number of simulated voters">
+        <button class="btn small secondary" id="simulate">Add simulated voters</button>
+        <button class="btn small" id="closePoll">Close voting &amp; count</button>
+      </div>
+    </div>
+    <p class="busy" id="busy" role="status"></p>
+  </div>
+  <div class="joinbox">
+    <img src="/qr.svg" alt="QR code that opens the voting page">
+    <div class="big">Scan to vote</div>
+    <div class="url" id="joinUrl"></div>
+  </div>
+</div>
+
+<div class="grid2">
+  <section>
+    <div class="sec-title"><h2>Results</h2><span class="hint" id="resultsNote"></span></div>
+    <div id="results"></div>
+
+    <div class="sec-title"><h2>What the server stores</h2><span class="hint">An insider's view of the database</span></div>
+    <div class="scroll"><table>
+      <thead><tr><th>#</th><th>Voter code</th><th>Stored vote</th><th>Integrity</th></tr></thead>
+      <tbody id="ballots"></tbody>
+    </table></div>
+
+    <div class="sec-title"><h2>Network capture</h2><span class="hint">What an eavesdropper sees</span></div>
+    <div id="traffic"></div>
+  </section>
+
+  <section>
+    <div class="sec-title"><h2>Attack console</h2>
+      <label class="hint">Attacker supports <select id="target" style="font-size:15px;min-height:34px;padding:3px 6px"></select></label></div>
+    <div id="outcomes" aria-live="polite"></div>
+    <div class="attack-grid">
+      <div class="attack"><h3>Insider tampering</h3><p>An admin quietly edits a stored vote.</p>
+        <div class="defence" data-def="SHA-256 hash chain"></div>
+        <button class="btn small warning" data-attack="tamper">Run attack</button></div>
+      <div class="attack"><h3>Tamper &amp; rewrite chain</h3><p>A smarter insider also recomputes every hash.</p>
+        <div class="defence" data-def="Ed25519 signatures + receipts"></div>
+        <button class="btn small warning" data-attack="tamper_rewrite">Run attack</button></div>
+      <div class="attack"><h3>Double voting</h3><p>Re-use a code that has already voted.</p>
+        <div class="defence" data-def="One-time codes"></div>
+        <button class="btn small warning" data-attack="double_vote">Run attack</button></div>
+      <div class="attack"><h3>Replay</h3><p>Re-send a ballot captured from the network.</p>
+        <div class="defence" data-def="Code already spent"></div>
+        <button class="btn small warning" data-attack="replay">Run attack</button></div>
+      <div class="attack"><h3>Ballot stuffing</h3><p>Send 20 ballots with made-up codes.</p>
+        <div class="defence" data-def="Only issued codes accepted"></div>
+        <button class="btn small warning" data-attack="stuff">Run attack</button></div>
+      <div class="attack limit"><h3>Malicious ballot</h3><p>A real voter encrypts 100 instead of 1.</p>
+        <div class="defence" style="color:var(--warn)" data-def="Known limitation: needs zero-knowledge proofs"></div>
+        <button class="btn small warning" data-attack="malicious">Run attack</button></div>
+    </div>
+    <p style="margin-top:12px"><button class="linkbtn" data-attack="undo_tamper">Undo tampering and restore the original ballots</button></p>
+
+    <div class="sec-title"><h2>Security log</h2></div>
+    <ul class="events" id="events"></ul>
+    <p class="hint" style="margin-top:24px"><a href="/admin/logout">Log out of the control room</a></p>
+  </section>
+</div>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='admin.js') }}?v=2"></script>{% endblock %}

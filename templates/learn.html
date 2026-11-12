@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}How it works – Campus Polls{% endblock %}
+{% block content %}
+<span class="caption">How it works</span>
+<h1>Counting votes without reading them</h1>
+<p class="lead">Campus Polls uses the <strong>Paillier cryptosystem</strong> (Pascal Paillier, 1999). Its special property:
+  multiplying two ciphertexts gives an encryption of the <em>sum</em> of the two hidden numbers. So the server can add up
+  every encrypted ballot and only ever decrypt the final total.</p>
+<p>Below is the real algorithm with tiny numbers so every step can be followed by hand. The live poll uses exactly the same
+  steps, with 2048-bit keys (numbers over 600 digits long).</p>
+
+<div class="panel">
+  <div class="inline-controls">
+    <div><label for="p">Secret prime p</label><select id="p"></select></div>
+    <div><label for="q">Secret prime q</label><select id="q"></select></div>
+    <div><label for="v1">Voter 1</label><select id="v1"><option>1</option><option>0</option></select></div>
+    <div><label for="v2">Voter 2</label><select id="v2"><option>0</option><option selected>1</option></select></div>
+    <div><label for="v3">Voter 3</label><select id="v3"><option>1</option><option>0</option></select></div>
+    <div><button class="btn small secondary" id="reroll" type="button">New random r values</button></div>
+  </div>
+  <p class="hint" style="margin:0">Each voter encrypts 1 for "yes, this candidate" or 0 for "no".</p>
+</div>
+<p id="err" class="status-bad" role="alert"></p>
+
+<div class="present-bar">
+  <button class="btn small secondary" id="stepMode" type="button">Present step by step</button>
+  <span class="hint" id="stepHint">Reveal one step at a time while you explain it.</span>
+</div>
+
+<ol class="steps" id="steps">
+  <li>
+    <h3>The election authority makes a key pair</h3>
+    <p>Pick two secret primes p and q. Their product n is the <strong>public key</strong>; it is sent to every phone.
+       The <strong>private key</strong> (λ and μ) can only be computed by someone who knows p and q.</p>
+    <div class="math" id="s1"></div>
+  </li>
+  <li>
+    <h3>Each phone encrypts its vote</h3>
+    <p>For a vote m and a fresh random number r: <span class="mono">c = g<sup>m</sup> · r<sup>n</sup> mod n²</span>.
+       Because r is random, encrypting the same vote twice gives different ciphertexts, so nobody can spot
+       "all the 1s" by comparing ballots.</p>
+    <div class="math" id="s2"></div>
+  </li>
+  <li>
+    <h3>The server multiplies the ciphertexts</h3>
+    <p>The server never decrypts a single ballot. It just multiplies them together:</p>
+    <div class="math" id="s3"></div>
+    <p class="hint">Why this adds the votes: g<sup>a</sup>r₁<sup>n</sup> · g<sup>b</sup>r₂<sup>n</sup> = g<sup>a+b</sup>(r₁r₂)<sup>n</sup>.
+       Multiplying ciphertexts adds the exponents, and the votes are in the exponents.</p>
+  </li>
+  <li>
+    <h3>The authority decrypts only the total</h3>
+    <p>Using the private key: <span class="mono">m = L(C<sup>λ</sup> mod n²) · μ mod n</span>, where <span class="mono">L(x) = (x − 1) / n</span>.</p>
+    <div class="math" id="s4"></div>
+  </li>
+  <li>
+    <h3>Why an attacker cannot do the same</h3>
+    <p>To decrypt you need λ = lcm(p − 1, q − 1), which needs p and q. Everyone knows n, so the whole system rests on one
+       question: <strong>given n, can you find p and q?</strong> This is the <strong>integer factorisation problem</strong>.
+       Paillier's formal security assumption, the <strong>Decisional Composite Residuosity</strong> problem
+       (telling whether a number is an n-th power mod n²), is believed to be just as hard.</p>
+    <div class="math" id="s5"></div>
+    <div id="realKey"></div>
+  </li>
+</ol>
+<div class="next-float" id="nextWrap" hidden><button class="btn" id="nextStep" type="button">Next step</button></div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='paillier.js') }}"></script>
+<script src="{{ url_for('static', filename='learn.js') }}?v=4"></script>
+{% endblock %}

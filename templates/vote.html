@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Vote – Campus Polls{% endblock %}
+{% block mainclass %}narrow{% endblock %}
+{% block content %}
+<div id="app"><p class="waiting">Loading the poll</p></div>
+<noscript><p>This page needs JavaScript so your vote can be encrypted on your device.</p></noscript>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='paillier.js') }}"></script>
+<script src="{{ url_for('static', filename='vote.js') }}?v=2"></script>
+{% endblock %}

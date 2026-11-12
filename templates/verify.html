@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Check my vote – Campus Polls{% endblock %}
+{% block mainclass %}narrow{% endblock %}
+{% block content %}
+<h1>Check my vote</h1>
+<p>Paste the receipt you got after voting in a protected poll. We will find your encrypted ballot on the public bulletin board and check that it has not been changed.</p>
+<form id="f">
+  <label class="field" for="r">Receipt</label>
+  <textarea id="r" class="full mono" rows="3" spellcheck="false">{{ receipt }}</textarea>
+  <p style="margin-top:14px"><button class="btn" type="submit">Check</button></p>
+</form>
+<div id="out" role="status"></div>
+{% endblock %}
+{% block scripts %}
+<script>
+(() => {
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const out = document.getElementById("out"), r = document.getElementById("r");
+  async function check(ev) {
+    if (ev) ev.preventDefault();
+    if (!r.value.trim()) return;
+    const d = await (await fetch("/api/verify?receipt=" + encodeURIComponent(r.value.trim()))).json();
+    const good = d.found && d.status === "ok";
+    out.innerHTML = `<div class="notice ${good ? "ok" : "bad"}"><h2>${good ? "Your vote is safe" : "Problem with your vote"}</h2>
+      <p>${esc(d.message)}</p>${d.found ? `<p class="hint" style="margin:0">Poll #${d.election_id}: ${esc(d.question)} &middot; bulletin board entry #${d.seq}</p>` : ""}</div>`;
+  }
+  document.getElementById("f").onsubmit = check;
+  if (!r.value.trim()) {
+    let saved = null;
+    try { saved = localStorage.getItem("cp_last_receipt"); } catch {}
+    if (saved) {
+      out.innerHTML = `<p class="hint">This phone has a saved receipt from your last vote.
+        <button class="linkbtn" id="useSaved" type="button">Use my saved receipt</button></p>`;
+      document.getElementById("useSaved").onclick = () => { r.value = saved; check(); };
+    }
+  }
+  if (r.value.trim()) check();
+})();
+</script>
+{% endblock %}

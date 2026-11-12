@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Bulletin board – Campus Polls{% endblock %}
+{% block content %}
+<span class="caption">Public record</span>
+<h1>Bulletin board</h1>
+<p class="lead">Every accepted ballot is published here so anyone can check the election.</p>
+<details><summary>How the board protects the votes</summary>
+<p style="margin-top:10px">In a protected poll each entry holds the encrypted ballot, the SHA-256 hash of the previous entry, its own hash
+  (the voter's receipt) and the server's Ed25519 signature. Changing any ballot, or the order of ballots, breaks the chain.
+  The server's public signing key is published at <a href="/api/board-public-key.pem">/api/board-public-key.pem</a>
+  so anyone can check the signatures independently, for example with OpenSSL.</p></details>
+<div id="board"><p>Loading&hellip;</p></div>
+{% endblock %}
+{% block scripts %}
+<script>
+(() => {
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const short = (s, h = 10, t = 6) => s && s.length > h + t + 1 ? `${s.slice(0, h)}…${s.slice(-t)}` : (s || "");
+  async function load() {
+    let d;
+    try { d = await (await fetch("/api/board", { cache: "no-store" })).json(); } catch { return; }
+    const el = document.getElementById("board");
+    if (!d.election) { el.innerHTML = `<p>No poll has been run yet.</p>`; return; }
+    const e = d.election;
+    let head = `<h2>Poll #${e.id}: ${esc(e.question)}</h2>`;
+    if (e.mode !== "protected") {
+      head += `<div class="notice bad"><h3>This poll has no bulletin board protection</h3>
+        <p style="margin:0">Votes are listed in plain text and nothing links or signs them. An insider could change, add or delete any of them and nobody could tell.</p></div>`;
+    } else if (d.intact === null || d.entries.length === 0) {
+      head += `<p class="hint">No ballots yet.</p>`;
+    } else if (d.intact) {
+      head += `<div class="notice ok"><h3>Integrity check passed</h3><p style="margin:0">All ${d.entries.length} entries link correctly, match their hashes and carry valid server signatures.</p></div>`;
+    } else {
+      const bad = d.entries.filter((x) => x.status !== "ok").map((x) => "#" + x.seq).join(", ");
+      head += `<div class="notice bad"><h3>Integrity check FAILED</h3><p style="margin:0">Entries ${esc(bad)} have been changed after they were recorded. The result of this poll cannot be certified.</p></div>`;
+    }
+    const rows = d.entries.slice().reverse().map((x) => {
+      const ballot = x.plain !== undefined ? `<strong>${esc(x.plain)}</strong>` : `<span class="mono">${x.ciphertexts.map(esc).join("<br>")}</span>`;
+      const st = x.status === "unprotected" ? `<span class="hint">&ndash;</span>`
+        : x.status === "ok" ? `<span class="status-ok">✓ valid</span>` : `<span class="status-bad">✗ ${esc(x.status)}</span>`;
+      return `<tr class="${x.status !== "ok" && x.status !== "unprotected" ? "row-bad" : ""}"><td data-label="Entry">${x.seq}</td><td data-label="Ballot">${ballot}</td>
+        <td data-label="Previous" class="mono">${esc(short(x.prev))}</td><td data-label="Receipt" class="mono">${esc(short(x.receipt))}</td><td data-label="Signature" class="mono">${esc(short(x.signature, 8, 4))}</td><td data-label="Check">${st}</td></tr>`;
+    }).join("");
+    el.innerHTML = head + `<div><table class="board-table"><thead><tr><th>#</th><th>Ballot</th><th>Previous hash</th><th>Receipt (hash)</th><th>Signature</th><th>Check</th></tr></thead>
+      <tbody>${rows || `<tr><td colspan="6" class="hint">No ballots yet.</td></tr>`}</tbody></table></div>`;
+  }
+  load(); setInterval(load, 3000);
+})();
+</script>
+{% endblock %}
