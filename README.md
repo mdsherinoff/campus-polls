@@ -1,6 +1,9 @@
 # Campus Polls: user manual
 
-CMPS 380 Cybersecurity Fundamentals, Fall 2026, Group G03.
+> **University coursework.** This project was built as part of the group project for **CMPS 380 Cybersecurity
+> Fundamentals** at **Qatar University** (Fall 2026), by **Group G03**, on the topic *Cryptographic Algorithms*.
+> It is an educational demonstration of homomorphic encryption for e-voting. It is not an official Qatar University
+> system and is not intended for real elections.
 
 Campus Polls is a web voting system that runs the same poll in two modes so the difference can be seen live:
 
