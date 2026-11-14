@@ -93,6 +93,7 @@ def public_state():
         return {
             "election": {
                 "id": e["id"],
+                "created_at": e["created_at"],
                 "question": poll["question"],
                 "options": poll["options"],
                 "mode": e["mode"],

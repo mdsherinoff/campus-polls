@@ -9,7 +9,9 @@
     get(k) { try { return localStorage.getItem(k); } catch { return null; } },
     set(k, v) { try { localStorage.setItem(k, v); } catch {} },
   };
-  const key = (name) => `cp_${name}_${election.id}`;
+  // The poll number alone is not unique: it starts again from 1 when the server's data is wiped
+  // (for example after a redeploy), so the creation time is part of the key too.
+  const key = (name) => `cp_${name}_${election.id}_${election.created_at}`;
   const shorten = (s, h = 18, t = 8) => (s.length > h + t + 1 ? `${s.slice(0, h)}…${s.slice(-t)}` : s);
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const isProtected = () => election.mode === "protected";
