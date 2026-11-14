@@ -70,7 +70,7 @@
         note = `${r.ballots} ballots`;
         res += r.certified
           ? `<div class="outcome blocked"><span class="verdict">Certified result</span>All ${r.ballots} encrypted ballots were combined without decrypting any of them. Only the totals were decrypted (add ${r.add_ms} ms, decrypt ${r.decrypt_ms} ms).</div>`
-          : `<div class="outcome succeeded"><span class="verdict">Not certified</span>The bulletin board failed its integrity check, so this result cannot be trusted.</div>`;
+          : `<div class="outcome succeeded"><span class="verdict">Not certified</span>${r.error ? esc(r.error) : "The bulletin board failed its integrity check, so this result cannot be trusted."}</div>`;
         res += bars(r.options, r.totals);
         res += `<details style="margin-top:16px"><summary>Encrypted totals before decryption</summary><table>${r.options.map((o, i) =>
           `<tr><td>${esc(o)}</td><td class="mono">${esc(r.encrypted_totals[i] ?? "–")}</td></tr>`).join("")}</table></details>`;

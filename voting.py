@@ -293,18 +293,31 @@ def compute_tally(conn, e):
             for i in range(len(options))]
     add_ms = (time.perf_counter() - t_add) * 1000
     t_dec = time.perf_counter()
-    for s in sums:
+    bad_options = []
+    for i, s in enumerate(sums):
         if s is None:
             enc_totals.append(None)
             totals.append(0)
-        else:
-            enc_totals.append(cc.short(s.ciphertext(be_secure=False), 18, 8))
+            continue
+        enc_totals.append(cc.short(s.ciphertext(be_secure=False), 18, 8))
+        try:
             totals.append(priv.decrypt(s))
+        except (OverflowError, ValueError):
+            # A structurally valid but meaningless ciphertext (not an encryption of a small
+            # number) was submitted. The sum decrypts to garbage, so report it instead of crashing.
+            totals.append(0)
+            bad_options.append(options[i])
     dec_ms = (time.perf_counter() - t_dec) * 1000
-    return {"options": options, "totals": totals, "ballots": len(rows), "mode": "protected",
-            "encrypted_totals": enc_totals, "certified": bool(intact) if rows else True,
-            "add_ms": round(add_ms, 1), "decrypt_ms": round(dec_ms, 1),
-            "ms": round((time.perf_counter() - t0) * 1000, 1)}
+    certified = (bool(intact) if rows else True) and not bad_options
+    result = {"options": options, "totals": totals, "ballots": len(rows), "mode": "protected",
+              "encrypted_totals": enc_totals, "certified": certified,
+              "add_ms": round(add_ms, 1), "decrypt_ms": round(dec_ms, 1),
+              "ms": round((time.perf_counter() - t0) * 1000, 1)}
+    if bad_options:
+        result["error"] = ("The total for " + ", ".join(bad_options) + " could not be decrypted: at least one "
+                           "ballot did not hold a valid vote value. Those totals are shown as 0 and the "
+                           "result is not certified.")
+    return result
 
 
 def close_and_tally():
@@ -321,7 +334,9 @@ def close_and_tally():
             msg = (f"Voting closed. {result['ballots']} encrypted ballots were combined homomorphically "
                    f"({result['add_ms']} ms) and only the totals were decrypted ({result['decrypt_ms']} ms).")
             log_event(conn, e["id"], "info", msg)
-            if not result["certified"]:
+            if result.get("error"):
+                log_event(conn, e["id"], "warning", "Result NOT certified: " + result["error"])
+            elif not result["certified"]:
                 log_event(conn, e["id"], "warning",
                           "Result NOT certified: the bulletin board failed its integrity check.")
         else:

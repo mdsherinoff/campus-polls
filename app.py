@@ -41,6 +41,11 @@ ADMIN_KEY = _load_admin_key()
 print(f"[Campus Polls] Admin page: /admin?key={ADMIN_KEY}", flush=True)
 
 
+def _key_ok(candidate):
+    # compare as bytes so a non-ASCII key gives "wrong key", not an error
+    return hmac.compare_digest(str(candidate).encode(), ADMIN_KEY.encode())
+
+
 def is_admin():
     return session.get("admin") is True
 
@@ -79,7 +84,7 @@ def verify_page():
 def admin_page():
     key = request.args.get("key")
     if key is not None:
-        if hmac.compare_digest(key, ADMIN_KEY):
+        if _key_ok(key):
             session["admin"] = True
             return redirect(url_for("admin_page"))
         return render_template("admin_login.html", error=True), 403
@@ -90,7 +95,7 @@ def admin_page():
 
 @app.route("/admin/login", methods=["POST"])
 def admin_login():
-    if hmac.compare_digest(request.form.get("key", ""), ADMIN_KEY):
+    if _key_ok(request.form.get("key", "")):
         session["admin"] = True
         return redirect(url_for("admin_page"))
     return render_template("admin_login.html", error=True), 403

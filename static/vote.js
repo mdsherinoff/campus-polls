@@ -212,7 +212,7 @@
     const note = res.mode === "protected"
       ? (res.certified
         ? `<p class="hint">${res.ballots} encrypted ballots were added up without opening any of them. Only these totals were decrypted.</p>`
-        : `<div class="notice bad"><p><strong>Not certified.</strong> The bulletin board failed its integrity check.</p></div>`)
+        : `<div class="notice bad"><p><strong>Not certified.</strong> ${res.error ? "At least one ballot was not a valid vote, so some totals could not be decrypted." : "The bulletin board failed its integrity check."}</p></div>`)
       : `<p class="hint">Counted by reading every ballot.</p>`;
     return `<h2>Results</h2>${note}<div class="bars">${res.options.map((o, i) => `
       <div class="bar-row ${res.totals[i] === max && max > 0 ? "lead" : ""}">
