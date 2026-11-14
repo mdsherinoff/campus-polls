@@ -87,6 +87,20 @@ Choose which option the attacker wants to help, then press Run attack. It works 
 
 "Undo tampering" puts the original ballots back so the demo can carry on. The security log lists every blocked attempt.
 
+## Doing the attacks by hand
+
+The `attacker/` folder does the same attacks the way a real attacker would, without the control-room buttons. Run them from the project folder while the app is running locally (the insider scripts open `data/campus_polls.db` directly, like someone with access to the server).
+
+| Command | Attack |
+|---|---|
+| `python attacker/read_db.py` | insider reads every ballot in the database |
+| `python attacker/change_vote.py Ronaldo` | insider changes a ballot so it counts for Ronaldo |
+| `python attacker/rewrite_chain.py` | insider recomputes the hash chain to hide the change |
+| `python attacker/stuff_ballots.py http://localhost:5050 20 Messi` | 20 votes with made-up codes |
+| `attacker/console_snippets.js` | replay a captured vote 50 times, and the malicious ballot (paste into the browser console) |
+
+After `change_vote.py` or `rewrite_chain.py` in a protected poll, press "Undo tampering" in the control room before casting more votes.
+
 ## Checking a signature with OpenSSL
 
 While a protected poll has ballots:
@@ -147,6 +161,7 @@ templates/             HTML pages
 tools/benchmark.py     timing tests and charts
 tools/export_entry.py  export one board entry for the OpenSSL check
 tools/simulate_voters.py  fake voters over HTTP
+attacker/              the attacks done by hand (scripts and browser-console snippets)
 requirements.txt, Procfile, render.yaml   deployment
 ```
 

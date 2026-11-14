@@ -339,3 +339,8 @@ body.admin { font-size: 17px; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+/* highlighted equation on /learn */
+.formula { display: inline-block; margin: 4px 0 14px; padding: 10px 16px; border-left: 4px solid var(--maroon, #8A1538);
+  background: var(--maroon-tint); font-size: 18px; font-weight: 600; }
+@media (max-width: 640px) { .formula { font-size: 15px; display: block; } }

@@ -45,9 +45,9 @@
       `μ = (L(g^λ mod n²))⁻¹ mod n = <b>${mu}</b>          (private)`;
 
     if (newR || !rs || rs.some((r) => r >= n || gcd(r, n) !== 1n)) rs = votes.map(() => randomR(n));
-    const cs = votes.map((m, i) => (modPow(g, m, n2) * modPow(rs[i], n, n2)) % n2);
+    const cs = votes.map((m, i) => ((1n + m * n) * modPow(rs[i], n, n2)) % n2);
     $("s2").innerHTML = votes.map((m, i) =>
-      `Voter ${i + 1}: m = ${m}, r = ${rs[i]}\n   c${i + 1} = ${g}^${m} · ${rs[i]}^${n} mod ${n2} = <b>${cs[i]}</b>`).join("\n\n");
+      `Voter ${i + 1}: m = ${m}, r = ${rs[i]}\n   c${i + 1} = (1 + ${m}·${n}) · ${rs[i]}^${n} mod ${n2} = <b>${cs[i]}</b>`).join("\n\n");
 
     const C = cs.reduce((a, c) => (a * c) % n2, 1n);
     $("s3").innerHTML = `C = c1 × c2 × c3 mod n²\n  = ${cs.join(" × ")} mod ${n2}\n  = <b>${C}</b>`;

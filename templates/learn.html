@@ -36,17 +36,22 @@
   </li>
   <li>
     <h3>Each phone encrypts its vote</h3>
-    <p>For a vote m and a fresh random number r: <span class="mono">c = g<sup>m</sup> · r<sup>n</sup> mod n²</span>.
-       Because r is random, encrypting the same vote twice gives different ciphertexts, so nobody can spot
-       "all the 1s" by comparing ballots.</p>
+    <p>For a vote m and a fresh random number r the textbook formula is <span class="mono">c = g<sup>m</sup> · r<sup>n</sup> mod n²</span>.
+       We use g = n + 1, which turns it into the form our code actually runs:</p>
+    <p class="formula mono">c = (1 + m·n) · r<sup>n</sup> mod n²</p>
+    <p>The vote m sits inside <span class="mono">(1 + m·n)</span>. The part <span class="mono">r<sup>n</sup></span> is a random mask,
+       so encrypting the same vote twice gives different ciphertexts and nobody can spot "all the 1s" by comparing ballots.</p>
     <div class="math" id="s2"></div>
   </li>
   <li>
     <h3>The server multiplies the ciphertexts</h3>
     <p>The server never decrypts a single ballot. It just multiplies them together:</p>
     <div class="math" id="s3"></div>
-    <p class="hint">Why this adds the votes: g<sup>a</sup>r₁<sup>n</sup> · g<sup>b</sup>r₂<sup>n</sup> = g<sup>a+b</sup>(r₁r₂)<sup>n</sup>.
-       Multiplying ciphertexts adds the exponents, and the votes are in the exponents.</p>
+    <p><strong>Why multiplying adds the votes.</strong> Multiply the vote parts of two ballots:</p>
+    <p class="formula mono">(1 + a·n)(1 + b·n) = 1 + (a + b)·n + a·b·n²</p>
+    <p>The last term is a multiple of n², so it disappears under mod n². What is left is
+       <span class="mono">1 + (a + b)·n</span>: the votes have been added. The masks multiply into one new mask,
+       <span class="mono">r₁<sup>n</sup> · r₂<sup>n</sup> = (r₁r₂)<sup>n</sup></span>, so the total stays hidden too.</p>
   </li>
   <li>
     <h3>The authority decrypts only the total</h3>
@@ -67,5 +72,5 @@
 {% endblock %}
 {% block scripts %}
 <script src="{{ url_for('static', filename='paillier.js') }}"></script>
-<script src="{{ url_for('static', filename='learn.js') }}?v=4"></script>
+<script src="{{ url_for('static', filename='learn.js') }}?v=5"></script>
 {% endblock %}
