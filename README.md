@@ -1,99 +1,93 @@
-# Campus Polls: user manual
+# Campus Polls
 
-> **University coursework.** This project was built as part of the group project for **CMPS 380 Cybersecurity
-> Fundamentals** at **Qatar University** (Fall 2026), by **Group G03**, on the topic *Cryptographic Algorithms*.
-> It is an educational demonstration of homomorphic encryption for e-voting. It is not an official Qatar University
-> system and is not intended for real elections.
+A small web voting app that runs the same poll in two ways, one with no protection and one that uses cryptography, so you can attack both and compare.
 
-Campus Polls is a web voting system that runs the same poll in two modes so the difference can be seen live:
+We built it for CMPS 380 (Cybersecurity Fundamentals, Qatar University, Fall 2026), group G03. Our topic was cryptographic algorithms. It is a classroom demo of homomorphic encryption, not a real election system, and it has nothing to do with the university's own systems.
+
+## What it does
 
 | | Basic mode | Protected mode |
 |---|---|---|
-| What travels over the network | The choice in plain text | Paillier ciphertexts made **in the voter's browser** |
-| What the server stores | Who (voting code) voted for what | Ciphertexts only; codes are not linked to ballots |
-| How votes are counted | Read every ballot | Multiply ciphertexts (adds the hidden votes), decrypt **only the totals** |
-| Voting codes | Issued but never checked | One code = one vote |
-| Tamper evidence | None | SHA-256 hash chain + Ed25519 server signature on every entry, public bulletin board, voter receipts |
+| Over the network | the choice as plain text | Paillier ciphertexts, made in the voter's browser |
+| In the database | the vote, with the voting code next to it | ciphertexts only (the ballot row has no code) |
+| Counting | read every ballot | multiply the ciphertexts, then decrypt only the totals |
+| Voting codes | handed out, never checked | each code works once |
+| Tamper evidence | none | SHA-256 hash chain, an Ed25519 signature on every entry, a public bulletin board and receipts |
 
-## 1. Technologies
+## Tools
 
-| Tool | Used for |
-|---|---|
-| Python 3 + Flask | Web server and API |
-| `phe` (python-paillier) | Paillier key generation, homomorphic addition, decryption |
-| JavaScript BigInt (`static/paillier.js`, our own code) | Paillier encryption on the voter's phone |
-| `cryptography` | Ed25519 signatures, AES-GCM/RSA for benchmarks |
-| `hashlib` (SHA-256) | Bulletin-board hash chain and receipts |
-| OpenSSL 3 | Creating the signing key and independently verifying signatures |
-| SQLite | Storage |
-| `qrcode` | QR code for joining the poll |
-| matplotlib | Benchmark charts |
-| Browser DevTools / Wireshark | Showing what an eavesdropper sees |
-| Render (free) or ngrok | Hosting for the live class demo |
+- Python 3 and Flask for the server
+- `phe` (python-paillier) for Paillier key generation, adding ciphertexts and decrypting
+- `static/paillier.js`, our own BigInt code, for encrypting in the browser
+- `cryptography` for Ed25519 (and AES-GCM and RSA in the benchmark)
+- `hashlib` for SHA-256
+- OpenSSL 3 for making the signing key and checking signatures from outside the app
+- SQLite for storage, `qrcode` for the join code, matplotlib for the benchmark charts
+- Render or ngrok for hosting
 
-## 2. Setting up and running locally
+## Running it locally
 
-Requires Python 3.10+ (macOS, Linux or Windows).
+You need Python 3.10 or newer.
 
 ```bash
 cd campus-polls
 python3 -m venv .venv
-source .venv/bin/activate          # Windows: .venv\Scripts\activate
+source .venv/bin/activate          # on Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-Optional, create the bulletin-board signing key with OpenSSL (otherwise the app creates one in the same format):
+If you want to make the signing key yourself with OpenSSL, do this first. If you skip it, the app makes a key in the same format.
 
 ```bash
 mkdir -p keys
 openssl genpkey -algorithm ed25519 -out keys/board_signing_key.pem
 ```
 
-Start the server:
+Then start the server:
 
 ```bash
 python app.py
 ```
 
-The terminal prints the admin link, e.g. `Admin page: /admin?key=Lm30...`. The key is also saved in `data/admin_key.txt`. You can choose your own with `ADMIN_KEY=yourkey python app.py`.
+It prints an admin link like `Admin page: /admin?key=Lm30...` and also saves the key in `data/admin_key.txt`. To pick your own key, run `ADMIN_KEY=yourkey python app.py` (in PowerShell: `$env:ADMIN_KEY="yourkey"; python app.py`).
 
-| Page | Address | Who uses it |
+| Page | Address | For |
 |---|---|---|
-| Vote | `http://localhost:5050/` | Voters (phones) |
-| Election control room | `http://localhost:5050/admin?key=<admin key>` | Presenter, on the projector |
-| Bulletin board | `/board` | Anyone |
-| Check my vote | `/verify` | Voters with a receipt |
-| How it works | `/learn` | Presenter: step-by-step Paillier with small numbers |
+| Vote | `http://localhost:5050/` | voters |
+| Control room | `http://localhost:5050/admin?key=<admin key>` | whoever runs the poll |
+| Bulletin board | `/board` | anyone |
+| Check my vote | `/verify` | voters with a receipt |
+| How it works | `/learn` | Paillier with small numbers, step by step |
 
-Phones on the same Wi-Fi can open `http://<laptop-ip>:5050`. University Wi-Fi often blocks this, so use hosting (section 6).
+Phones on the same Wi-Fi can use `http://<laptop-ip>:5050`. Campus Wi-Fi often blocks that, so hosting (below) is easier.
 
-## 3. Running a poll (control room)
+## Running a poll
 
-1. Choose the **Poll** (food or football) and the **Mode** (Basic or Protected), then press **Open new poll**. Protected mode generates a fresh 2048-bit Paillier key pair.
-2. Voters scan the QR code, press **Get my voting code**, choose and press **Cast my vote**. In protected mode the phone encrypts one value per option (1 for the choice, 0 for the others) before sending.
-3. **Add simulated voters** adds extra voters (each one encrypts on its own side, like a phone).
-4. **Close voting & count** ends the poll. In protected mode the server multiplies all ciphertexts and decrypts only the totals. The result is certified only if the bulletin board passes its integrity check.
+1. In the control room pick a poll (food or football) and a mode, then press Open poll. Protected mode makes a new 2048-bit Paillier key pair, which takes a moment.
+2. Voters scan the QR code, get a one-time code and pick an option. In protected mode the phone encrypts one value per option (a 1 for the choice, 0 for the rest) before anything is sent.
+3. "Add simulated voters" adds fake voters. Each one encrypts on its own, the way a phone does.
+4. "Close voting & count" ends the poll. In protected mode the server multiplies the ciphertexts for each option and decrypts only the totals. The result is marked certified only if the bulletin board passes its integrity check.
 
-After voting, a voter can expand **What did my phone actually send?** to see the exact request, and in protected mode use their **receipt** on `/verify`.
+After voting, a voter can open "What did my phone actually send?" to see the exact request. In protected mode they also get a receipt to paste into `/verify`.
 
-## 4. Attack console
+## Attack console
 
-Pick which option the attacker wants to help, then run an attack. Run each one in Basic mode first, then in Protected mode.
+Choose which option the attacker wants to help, then press Run attack. It works best to run each attack in a basic poll first and then in a protected one.
 
-| Attack | Basic mode | Protected mode | Defence |
+| Attack | Basic mode | Protected mode | What stops it |
 |---|---|---|---|
-| Insider reads the database | Sees every vote and voting code | Sees only ciphertext | Paillier encryption in the browser |
-| Eavesdropper on the network | Reads the choice | Reads only ciphertext | Encryption before sending |
-| Insider tampering | Succeeds, undetected | **Detected**: entry shows ALTERED, result not certified | SHA-256 hash chain |
-| Tamper & rewrite chain | (not applicable) | **Detected**: signatures fail, voters' receipts no longer match | Ed25519 signatures + receipts |
-| Double voting | Succeeds | **Blocked** | One-time codes |
-| Replay of a captured ballot | Succeeds | **Blocked** | Code already used |
-| Ballot stuffing (20 fake codes) | Succeeds | **Blocked** | Only issued codes accepted |
-| Malicious ballot (encrypts 100) | (not applicable) | **Succeeds: known limitation** | Real systems add zero-knowledge proofs |
+| Insider reads the database | sees every vote and code | sees only ciphertexts | encryption in the browser |
+| Eavesdropper on the network | reads the choice | reads only ciphertexts | encryption before sending |
+| Insider edits a ballot | works, nobody notices | detected: the entry shows ALTERED and the result is not certified | hash chain |
+| Edit and rewrite the chain | not applicable | detected: signatures fail and receipts stop matching | Ed25519 signatures |
+| Double voting | works | blocked | one-time codes |
+| Replay of a captured ballot | works | blocked | the code is already used |
+| Ballot stuffing (20 made-up codes) | works | blocked | only issued codes are accepted |
+| Malicious ballot (encrypts 100) | not applicable | works | nothing, see Limitations |
 
-**Undo tampering (reset demo)** restores tampered ballots so the demo can continue. The **Security log** shows every blocked attempt.
+"Undo tampering" puts the original ballots back so the demo can carry on. The security log lists every blocked attempt.
 
-## 5. Verifying a signature with OpenSSL
+## Checking a signature with OpenSSL
 
 While a protected poll has ballots:
 
@@ -103,66 +97,65 @@ openssl pkeyutl -verify -pubin -inkey export/board_public.pem -rawin \
     -in export/entry_2.hash.bin -sigfile export/entry_2.sig.bin
 ```
 
-Expected output: `Signature Verified Successfully`. Change one byte of `entry_2.hash.bin` and the same command prints `Signature Verification Failure`.
+You should see `Signature Verified Successfully`. Change one byte of `entry_2.hash.bin` and the same command prints `Signature Verification Failure`. This needs OpenSSL 3 (on macOS, `brew install openssl`).
 
-(Requires OpenSSL 3. On macOS: `brew install openssl`.)
+## Hosting
 
-## 6. Hosting for the live demo
+On Render (free plan): push this folder to a GitHub repo, choose New, then Blueprint, and pick the repo. Render reads `render.yaml`. Set `ADMIN_KEY` to something secret. Free services go to sleep when nobody visits, so open the site a few minutes before you need it. Data is wiped whenever the service restarts.
 
-**Option A: Render (free).** Push the `campus-polls` folder to a GitHub repository, then in Render choose *New > Blueprint* and pick the repository (it reads `render.yaml`). Set `ADMIN_KEY` to a secret value. Free services sleep when idle, so open the site about 10 minutes before presenting. Data is reset whenever the service restarts, which is fine for a demo.
-
-**Option B: a laptop + ngrok.** Run `python app.py` on the laptop, then in another terminal:
+With ngrok: run `python app.py`, then in a second terminal run
 
 ```bash
 ngrok http 5050
 ```
 
-The QR code on the control room automatically uses the public ngrok address once you open the admin page through it.
+If you open the admin page through the ngrok address, the QR code uses that address too.
 
-**Backup if the network fails:** use **Add simulated voters**, or from another computer:
+If the network fails, "Add simulated voters" still works, and so does this from another machine:
 
 ```bash
 python tools/simulate_voters.py https://<your-address> 20
 ```
 
-## 7. Benchmarks
+## Benchmarks
 
 ```bash
 python tools/benchmark.py
 ```
 
-Writes charts and `results.md` to `bench_output/`:
-1. Paillier key generation / encryption / addition / decryption at 1024, 2048 and 3072 bits
-2. Tally time as the number of voters grows
-3. Paillier vs AES-256-GCM vs RSA-2048-OAEP for one vote (speed, ciphertext size, homomorphic or not)
-4. How factoring time grows with the size of n (Pollard's rho)
+This writes charts and `results.md` into `bench_output/`:
 
-## 8. Project structure
+1. Paillier key generation, encryption, addition and decryption at 1024, 2048 and 3072 bits
+2. How tally time grows with the number of voters
+3. Paillier against AES-256-GCM and RSA-2048-OAEP for one vote (speed, ciphertext size, whether the ciphertexts can be added)
+4. How the time to factor n grows with its size (Pollard's rho)
+
+## Files
 
 ```
-campus-polls/
-  app.py               Flask routes (pages + API)
-  voting.py            Elections, ballot handling, bulletin board, tally
-  attacks.py           Attack simulations for the demo
-  crypto_core.py       Paillier helpers, SHA-256 hash chain, Ed25519 signing
-  db.py                SQLite schema
-  polls.py             Poll questions and options
-  static/paillier.js   Paillier encryption in the browser
-  static/vote.js       Voter page
-  static/admin.js      Control room
-  static/learn.js      Step-by-step Paillier with small numbers
-  templates/           HTML pages
-  tools/benchmark.py   Performance measurements and charts
-  tools/export_entry.py      Export a board entry for OpenSSL verification
-  tools/simulate_voters.py   Simulated voters over HTTP
-  requirements.txt, Procfile, render.yaml   Deployment
+app.py                 Flask routes (pages and API)
+voting.py              elections, ballot handling, bulletin board, tally
+attacks.py             the attack buttons
+crypto_core.py         Paillier helpers, hash chain, Ed25519 signing
+db.py                  SQLite schema
+polls.py               poll questions and options
+static/paillier.js     Paillier encryption in the browser
+static/vote.js         voter page
+static/admin.js        control room
+static/learn.js        the small-numbers walkthrough
+templates/             HTML pages
+tools/benchmark.py     timing tests and charts
+tools/export_entry.py  export one board entry for the OpenSSL check
+tools/simulate_voters.py  fake voters over HTTP
+requirements.txt, Procfile, render.yaml   deployment
 ```
 
-## 9. Known limitations (discuss in the report)
+## Limitations
 
-* **Malicious ballots:** the server cannot check that each ciphertext encrypts 0 or 1. Real systems (Helios, ElectionGuard) attach zero-knowledge proofs.
-* **Single key holder:** whoever holds the Paillier private key could decrypt an individual ballot. Real systems split the key among several trustees (threshold decryption).
-* **Voter identity:** voting codes are handed out to any device; clearing the browser gives a new code. Real systems tie credentials to a registered voter (e.g. student ID).
-* **Trust in the web page:** voters must trust that the JavaScript served to them really encrypts their choice. Real systems allow independent audit of the voting client ("cast-or-audit").
-* **Quantum computers:** Paillier, like RSA, relies on factoring being hard. Shor's algorithm on a large quantum computer would break it, and ballots published today could be decrypted in the future ("harvest now, decrypt later"). Lattice-based homomorphic schemes (BFV/CKKS, based on Learning With Errors) are the post-quantum alternative.
-* Coercion and vote buying are not addressed.
+- Malicious ballots. The server can't tell whether a ciphertext holds 0 or 1, so a registered voter who encrypts 100 gets 100 votes. Systems like Helios and ElectionGuard attach a zero-knowledge proof to each ballot to prevent this. We didn't build that.
+- One key holder. The Paillier private key (p and q) is saved in the `elections` table next to the ballots, and the signing key is on the same server. Whoever controls the server could decrypt single ballots or re-sign a rewritten board. Real systems split the key between several trustees.
+- Voter identity. Codes go to any device. The code lives in the browser, so clearing site data, or calling `/api/register` again, gives a fresh code and a second vote. A real system would tie one credential to one registered voter, for example a student ID.
+- The request log. The `traffic` table keeps raw request bodies for the network-capture panel, so in that table a code sits next to its ciphertexts.
+- Trusting the page. The voter has to trust that the JavaScript the server sends really encrypts their choice. Real systems let voters audit the voting client ("cast or audit").
+- Quantum computers. Paillier relies on factoring being hard, like RSA, so Shor's algorithm would break it. Ballots published today could be decrypted later. Lattice-based schemes (BFV, CKKS) are the usual alternative.
+- Not covered: coercion, vote buying, and denial of service. There is no rate limiting.
