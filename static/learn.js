@@ -32,6 +32,19 @@
     if (p === q) { $("err").textContent = "p and q must be different primes."; return; }
     const n = p * q, n2 = n * n, g = n + 1n;
     if (gcd(n, (p - 1n) * (q - 1n)) !== 1n) { $("err").textContent = "Pick another pair: gcd(n, (p−1)(q−1)) must be 1."; return; }
+    // Step 2: one box per candidate. Candidate A's column is the three votes chosen above;
+    // a voter who did not pick A is shown picking B or C instead.
+    const ballots = votes.map((v, i) => (v === 1n ? [1, 0, 0] : i % 2 === 1 ? [0, 1, 0] : [0, 0, 1]));
+    // every column is 8 characters wide so the numbers line up under Box A / B / C
+    $("sBallot").innerHTML =
+      `What each voter puts in the boxes (only the voter knows this)\n` +
+      `          Box A   Box B   Box C\n` +
+      ballots.map((b, i) => `Voter ${i + 1}   ${b.map((x) => `<b>${x}</b>       `).join("")}`).join("\n") + `\n\n` +
+      `What the server receives (after locking)\n` +
+      ballots.map((b, i) => `Voter ${i + 1}   ${b.map(() => "[ ? ]   ").join("")}`).join("\n") + `\n\n` +
+      `Server combines each column, authority opens only the totals:\n` +
+      `A = <b>${ballots.reduce((a, b) => a + b[0], 0)}</b>   B = <b>${ballots.reduce((a, b) => a + b[1], 0)}</b>   C = <b>${ballots.reduce((a, b) => a + b[2], 0)}</b>`;
+
     const lambda = lcm(p - 1n, q - 1n);
     const L = (x) => (x - 1n) / n;
     const mu = modInv(L(modPow(g, lambda, n2)), n);

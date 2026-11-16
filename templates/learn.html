@@ -14,7 +14,7 @@
     <div><label for="p">Secret prime p</label><select id="p"></select></div>
     <div><label for="q">Secret prime q</label><select id="q"></select></div>
     <div><label for="v1">Voter 1</label><select id="v1"><option>1</option><option>0</option></select></div>
-    <div><label for="v2">Voter 2</label><select id="v2"><option>0</option><option selected>1</option></select></div>
+    <div><label for="v2">Voter 2</label><select id="v2"><option>1</option><option selected>0</option></select></div>
     <div><label for="v3">Voter 3</label><select id="v3"><option>1</option><option>0</option></select></div>
     <div><button class="btn small secondary" id="reroll" type="button">New random r values</button></div>
   </div>
@@ -33,6 +33,19 @@
     <p>Pick two secret primes p and q. Their product n is the <strong>public key</strong>; it is sent to every phone.
        The <strong>private key</strong> (λ and μ) can only be computed by someone who knows p and q.</p>
     <div class="math" id="s1"></div>
+  </li>
+  <li>
+    <h3>A ballot is a row of locked boxes: one 1, the rest 0</h3>
+    <p>Think of a ballot as <strong>one locked box per candidate</strong>. The voter puts a <strong>1</strong> in the box of the
+       candidate they choose and a <strong>0</strong> in every other box, then locks every box with the public key.
+       Anyone can lock a box, but only the authority's private key can open one.</p>
+    <div class="math" id="sBallot"></div>
+    <p>The server receives only the locked boxes. They all look like random numbers, so it cannot tell which box holds the 1,
+       and a vote for A looks just like a vote for B. To count, the server takes <strong>one candidate's column</strong> and
+       combines those boxes (the next steps show how). The result is a single locked box holding that candidate's total, and
+       <strong>only that total is ever opened</strong>.</p>
+    <p class="hint">The rest of this page follows the <strong>Candidate A column</strong>, with the votes you picked above.
+       The live poll repeats it for every candidate.</p>
   </li>
   <li>
     <h3>Each phone encrypts its vote</h3>
@@ -67,10 +80,38 @@
     <div class="math" id="s5"></div>
     <div id="realKey"></div>
   </li>
+  <li>
+    <h3>What this costs</h3>
+    <p>Privacy is not free. Time to encrypt <strong>one vote</strong>, measured with <span class="mono">tools/benchmark.py</span>
+       (the bars use a log scale, so a bar that looks only a bit longer is many times slower):</p>
+    <div class="bars" role="img" aria-label="Time to encrypt one vote: AES-256-GCM 0.001 milliseconds, RSA-2048 0.023 milliseconds, Paillier-2048 5.1 milliseconds. Only Paillier can add votes while they are encrypted.">
+      <div class="bar-row">
+        <div class="bar-label">AES-256-GCM</div>
+        <div class="bar-track"><div class="bar-fill" style="width:9%"></div></div>
+        <div class="bar-num"><b>0.001 ms</b><span>cannot add</span></div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-label">RSA-2048</div>
+        <div class="bar-track"><div class="bar-fill" style="width:32%"></div></div>
+        <div class="bar-num"><b>0.023 ms</b><span>cannot add</span></div>
+      </div>
+      <div class="bar-row lead">
+        <div class="bar-label">Paillier-2048</div>
+        <div class="bar-track"><div class="bar-fill" style="width:73%"></div></div>
+        <div class="bar-num"><b>5.1 ms</b><span>can add</span></div>
+      </div>
+    </div>
+    <div class="panel" style="margin-top:16px">
+      <p><strong>Counting is cheap.</strong> Adding 10,000 encrypted ballots and decrypting the total takes
+         <strong>65.6 ms</strong> on the server. The slow part, encryption, happens once on each voter's own phone.</p>
+      <p class="hint">Paillier is about 200 times slower than RSA for one vote, but it is the only one of the three that lets the
+         server add votes it cannot read. Measured with 2048-bit keys on an arm64 laptop, Python 3.14.2.</p>
+    </div>
+  </li>
 </ol>
 <div class="next-float" id="nextWrap" hidden><button class="btn" id="nextStep" type="button">Next step</button></div>
 {% endblock %}
 {% block scripts %}
 <script src="{{ url_for('static', filename='paillier.js') }}"></script>
-<script src="{{ url_for('static', filename='learn.js') }}?v=5"></script>
+<script src="{{ url_for('static', filename='learn.js') }}?v=7"></script>
 {% endblock %}
